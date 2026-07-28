@@ -1,0 +1,27 @@
+{
+  "name": "email-manager-backend",
+  "version": "1.0.0",
+  "description": "Node.js backend for email management application",
+  "main": "nodejs_backend.js",
+  "scripts": {
+    "start": "node nodejs_backend.js",
+    "dev": "nodemon nodejs_backend.js"
+  },
+  "keywords": [
+    "email",
+    "management",
+    "summary",
+    "priority"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "axios": "^1.4.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
