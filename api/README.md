@@ -52,7 +52,7 @@ A fresh database is empty; see [Import](#import) below for getting e-mails in.
 | Variable         | Default                   | Purpose                                  |
 | ---------------- | ------------------------- | ---------------------------------------- |
 | `EMAILS_DB_PATH` | `../data/emails.db`       | Where the SQLite file lives.              |
-| `CORS_ORIGINS`   | `http://localhost:3000`   | Comma-separated allowed origins. The default matches the Next.js client in `../client`. |
+| `CORS_ORIGINS`   | `http://localhost:3000`   | Comma-separated allowed origins. The default matches the Vite client in `../client`. |
 
 ```bash
 EMAILS_DB_PATH=/tmp/scratch.db uvicorn app.main:app --port 8000
@@ -250,3 +250,21 @@ app/
   routers/summarize.py  /summarize queue routes
   routers/agenda.py     /agenda routes
 ```
+
+## Client
+
+The React client in `../client` talks to this API and nothing else — there is no
+auth layer on either side. Run it with `npm install && npm run dev` and open
+<http://localhost:3000>; its dev server proxies `/api/*` here on :8000, so start
+uvicorn first. Point a build elsewhere with `VITE_API_BASE`.
+
+```
+../client/src/
+  api.js             one function per route, plus ApiError
+  dates.js           DD-Mon-YYYY / HH:MM parsing and formatting
+  App.jsx            shell, tab switching, /health pill
+  components/PriorityPanel.jsx   GET /emails, grouped by priority
+  components/SummaryPanel.jsx    GET /emails/summarize + the /summarize queue
+```
+
+`/agenda` has no screen yet — it is the obvious next panel.

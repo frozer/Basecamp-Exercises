@@ -34,6 +34,42 @@
   border: 1px solid #e5e7eb;
 }
 
+.search-form,
+.inline-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.inline-form {
+  margin-bottom: 0;
+  margin-top: 4px;
+}
+
+.search-input,
+.select-input {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #111827;
+  background: white;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 180px;
+}
+
+.search-input:focus,
+.select-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
 .filter-buttons {
   display: flex;
   gap: 8px;
@@ -143,6 +179,7 @@
   font-size: 13px;
   color: #6b7280;
   font-weight: 500;
+  text-transform: capitalize;
 }
 
 /* Email Section */
@@ -181,7 +218,7 @@
   border-color: #d1d5db;
 }
 
-.email-card.meeting-card {
+.email-card.job-card {
   background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
   border-color: #0ea5e9;
   border-left: 4px solid #0ea5e9;
@@ -220,6 +257,90 @@
   color: #4b5563;
   line-height: 1.5;
   margin: 0;
+  white-space: pre-wrap;
+}
+
+/* Badges — id, priority and the contract's derived `highPriority` flag */
+.card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background-color: #f3f4f6;
+  color: #4b5563;
+}
+
+.badge-flag {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Summaries and job queue */
+.summary-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #111827;
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+}
+
+.notice {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.notice-info {
+  margin: 0 0 12px;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.job-meta {
+  font-size: 13px;
+  color: #4b5563;
+  margin: 0 0 10px;
+}
+
+.job-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.job-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.job-textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .empty-state {
@@ -298,20 +419,6 @@
 
 .priority-card .email-from {
   margin-bottom: 8px;
-}
-
-.priority-reason {
-  font-size: 12px;
-  color: #6b7280;
-  margin: 0;
-  padding: 8px 12px;
-  background-color: #f9fafb;
-  border-radius: 4px;
-  line-height: 1.4;
-}
-
-.priority-reason strong {
-  color: #111827;
 }
 
 /* Responsive */

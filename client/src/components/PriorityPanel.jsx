@@ -1,126 +1,142 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import '../styles/panels.css';
+import { listEmails } from '../api';
+import { formatSentAt, todayIso, withinRange } from '../dates';
 
-function PriorityPanel({ userEmail, apiUrl }) {
-  const [data, setData] = useState(null);
+// The API's Priority enum, most urgent first. The top band is `critical`, not
+// `high`; the CSS class names keep the original palette hooks.
+const BANDS = [
+  {
+    value: 'critical',
+    heading: 'Critical - Requires Immediate Attention',
+    empty: 'No critical e-mails',
+    icon: '🔴',
+    color: '#ef4444',
+    modifier: 'high',
+  },
+  {
+    value: 'medium',
+    heading: 'Medium - Review Soon',
+    empty: 'No medium priority e-mails',
+    icon: '🟡',
+    color: '#f59e0b',
+    modifier: 'medium',
+  },
+  {
+    value: 'low',
+    heading: 'Low - Can Be Reviewed Later',
+    empty: 'No low priority e-mails',
+    icon: '🟢',
+    color: '#10b981',
+    modifier: 'low',
+  },
+];
+
+const PREVIEW_LIMIT = 200;
+
+function preview(body) {
+  const text = (body ?? '').replace(/\s+/g, ' ').trim();
+  return text.length > PREVIEW_LIMIT ? `${text.slice(0, PREVIEW_LIMIT)}…` : text;
+}
+
+function PriorityPanel() {
+  const [emails, setEmails] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [dateMode, setDateMode] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [dateMode, setDateMode] = useState('all');
+  // The applied range, separate from the pickers above so typing a date does
+  // not filter until Load is pressed.
+  const [range, setRange] = useState({ from: '', to: '' });
 
-  useEffect(() => {
-    // Load default (today's data)
-    const today = new Date();
-    loadPriorities(
-      today.toISOString().split('T')[0],
-      today.toISOString().split('T')[0]
-    );
-  }, []);
-
-  const loadPriorities = async (start, end) => {
+  const load = useCallback(async (q) => {
     setLoading(true);
     setError('');
-
     try {
-      const response = await fetch(`${apiUrl}/emails/priorities`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: userEmail,
-          startDate: start,
-          endDate: end,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load priorities');
-      }
-
-      const result = await response.json();
-      setData(result.priorities);
+      setEmails(await listEmails({ q }));
     } catch (err) {
       setError(err.message);
+      setEmails(null);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    load('');
+  }, [load]);
+
+  const handleSearch = (event) => {
+    event.preventDefault();
+    load(search.trim());
   };
 
-  const handleLoadToday = () => {
-    const today = new Date();
-    const dateStr = today.toISOString().split('T')[0];
-    loadPriorities(dateStr, dateStr);
-    setDateMode('specific');
-  };
+  // GET /emails takes `q` and `priority` only, so the day filter runs here over
+  // the contract's `date` field.
+  const visible = useMemo(() => withinRange(emails ?? [], range), [emails, range]);
 
-  const handleLoadRange = () => {
-    if (startDate && endDate) {
-      loadPriorities(startDate, endDate);
-    } else {
-      setError('Please select both start and end dates');
-    }
-  };
+  const grouped = useMemo(() => {
+    const groups = Object.fromEntries(BANDS.map((band) => [band.value, []]));
+    for (const email of visible) groups[email.priority]?.push(email);
+    return groups;
+  }, [visible]);
 
-  const handleLoadAll = () => {
-    loadPriorities(null, null);
+  const handleShowAll = () => {
     setDateMode('all');
+    setRange({ from: '', to: '' });
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const handleShowToday = () => {
+    const today = todayIso();
+    setDateMode('today');
+    setRange({ from: today, to: today });
   };
 
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case 'high':
-        return '#ef4444'; // Red
-      case 'medium':
-        return '#f59e0b'; // Amber
-      case 'low':
-        return '#10b981'; // Green
-      default:
-        return '#6b7280'; // Gray
+  const handleShowRange = () => {
+    if (!startDate || !endDate) {
+      setError('Please select both start and end dates');
+      return;
     }
-  };
-
-  const getPriorityIcon = (priority) => {
-    switch (priority) {
-      case 'high':
-        return '🔴';
-      case 'medium':
-        return '🟡';
-      case 'low':
-        return '🟢';
-      default:
-        return '⚪';
-    }
+    setError('');
+    setRange({ from: startDate, to: endDate });
   };
 
   return (
     <div className="panel-container">
       <div className="panel-header">
-        <h2>⚡ Priority Management</h2>
-        <p className="subtitle">Emails organized by priority level</p>
+        <h2>⚡ Inbox by Priority</h2>
+        <p className="subtitle">
+          Every e-mail from <code>GET /emails</code>, grouped by its priority
+        </p>
       </div>
 
-      {/* Date Filter Controls */}
       <div className="filter-section">
+        <form className="search-form" onSubmit={handleSearch}>
+          <input
+            type="search"
+            className="search-input"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search subject and body…"
+            aria-label="Search e-mails"
+          />
+          <button type="submit" className="btn-primary" disabled={loading}>
+            {loading ? 'Searching…' : 'Search'}
+          </button>
+        </form>
+
         <div className="filter-buttons">
           <button
             className={`filter-btn ${dateMode === 'all' ? 'active' : ''}`}
-            onClick={handleLoadAll}
+            onClick={handleShowAll}
           >
             All Time
           </button>
           <button
-            className={`filter-btn ${dateMode === 'specific' ? 'active' : ''}`}
-            onClick={handleLoadToday}
+            className={`filter-btn ${dateMode === 'today' ? 'active' : ''}`}
+            onClick={handleShowToday}
           >
             Today
           </button>
@@ -135,23 +151,25 @@ function PriorityPanel({ userEmail, apiUrl }) {
         {dateMode === 'range' && (
           <div className="date-range-selector">
             <div className="date-input-group">
-              <label>From</label>
+              <label htmlFor="priority-from">From</label>
               <input
+                id="priority-from"
                 type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(event) => setStartDate(event.target.value)}
               />
             </div>
             <div className="date-input-group">
-              <label>To</label>
+              <label htmlFor="priority-to">To</label>
               <input
+                id="priority-to"
                 type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={(event) => setEndDate(event.target.value)}
               />
             </div>
             <button
-              onClick={handleLoadRange}
+              onClick={handleShowRange}
               className="btn-primary"
               disabled={!startDate || !endDate}
             >
@@ -164,132 +182,59 @@ function PriorityPanel({ userEmail, apiUrl }) {
       {error && <div className="error-message">{error}</div>}
 
       {loading ? (
-        <div className="loading">Loading priorities...</div>
-      ) : data ? (
+        <div className="loading">Loading e-mails…</div>
+      ) : emails ? (
         <>
-          {/* Priority Stats */}
           <div className="stats-section">
-            <div className="stat-card high-priority">
-              <span className="stat-number">{data.high_priority.length}</span>
-              <span className="stat-label">High Priority</span>
-            </div>
-            <div className="stat-card medium-priority">
-              <span className="stat-number">{data.medium_priority.length}</span>
-              <span className="stat-label">Medium Priority</span>
-            </div>
-            <div className="stat-card low-priority">
-              <span className="stat-number">{data.low_priority.length}</span>
-              <span className="stat-label">Low Priority</span>
+            {BANDS.map((band) => (
+              <div key={band.value} className={`stat-card ${band.modifier}-priority`}>
+                <span className="stat-number">{grouped[band.value].length}</span>
+                <span className="stat-label">{band.value}</span>
+              </div>
+            ))}
+            <div className="stat-card">
+              <span className="stat-number">{visible.length}</span>
+              <span className="stat-label">Shown</span>
             </div>
           </div>
 
-          {/* High Priority */}
-          <section className="priority-section high">
-            <h3 className="section-title">
-              {getPriorityIcon('high')} High Priority - Requires Immediate Attention
-            </h3>
-            {data.high_priority.length > 0 ? (
-              <div className="priority-list">
-                {data.high_priority.map((email) => (
-                  <div
-                    key={email.id}
-                    className="priority-card"
-                    style={{ borderLeftColor: getPriorityColor('high') }}
-                  >
-                    <div className="priority-header">
-                      <div className="priority-title">
-                        <span className="priority-icon">
-                          {getPriorityIcon('high')}
-                        </span>
-                        <h4>{email.subject}</h4>
+          {BANDS.map((band) => (
+            <section key={band.value} className={`priority-section ${band.modifier}`}>
+              <h3 className="section-title">
+                {band.icon} {band.heading}
+              </h3>
+              {grouped[band.value].length > 0 ? (
+                <div className="priority-list">
+                  {grouped[band.value].map((email) => (
+                    <div
+                      key={email.id}
+                      className="priority-card"
+                      style={{ borderLeftColor: band.color }}
+                    >
+                      <div className="priority-header">
+                        <div className="priority-title">
+                          <span className="priority-icon">{band.icon}</span>
+                          <h4>{email.subject}</h4>
+                        </div>
+                        <span className="email-time">{formatSentAt(email)}</span>
                       </div>
-                      <span className="email-time">
-                        {formatDate(email.received_at)}
-                      </span>
-                    </div>
-                    <p className="email-from">{email.from_email}</p>
-                    <p className="priority-reason">
-                      <strong>Reason:</strong> {email.reason}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="empty-state">No high priority emails</p>
-            )}
-          </section>
-
-          {/* Medium Priority */}
-          <section className="priority-section medium">
-            <h3 className="section-title">
-              {getPriorityIcon('medium')} Medium Priority - Review Soon
-            </h3>
-            {data.medium_priority.length > 0 ? (
-              <div className="priority-list">
-                {data.medium_priority.map((email) => (
-                  <div
-                    key={email.id}
-                    className="priority-card"
-                    style={{ borderLeftColor: getPriorityColor('medium') }}
-                  >
-                    <div className="priority-header">
-                      <div className="priority-title">
-                        <span className="priority-icon">
-                          {getPriorityIcon('medium')}
-                        </span>
-                        <h4>{email.subject}</h4>
+                      <p className="email-from">
+                        {email.from} → {email.to}
+                      </p>
+                      <div className="card-badges">
+                        <span className="badge">#{email.id}</span>
+                        <span className="badge">{email.priority}</span>
+                        {email.highPriority && <span className="badge badge-flag">highPriority</span>}
                       </div>
-                      <span className="email-time">
-                        {formatDate(email.received_at)}
-                      </span>
+                      <p className="email-preview">{preview(email.body)}</p>
                     </div>
-                    <p className="email-from">{email.from_email}</p>
-                    <p className="priority-reason">
-                      <strong>Reason:</strong> {email.reason}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="empty-state">No medium priority emails</p>
-            )}
-          </section>
-
-          {/* Low Priority */}
-          <section className="priority-section low">
-            <h3 className="section-title">
-              {getPriorityIcon('low')} Low Priority - Can Be Reviewed Later
-            </h3>
-            {data.low_priority.length > 0 ? (
-              <div className="priority-list">
-                {data.low_priority.map((email) => (
-                  <div
-                    key={email.id}
-                    className="priority-card"
-                    style={{ borderLeftColor: getPriorityColor('low') }}
-                  >
-                    <div className="priority-header">
-                      <div className="priority-title">
-                        <span className="priority-icon">
-                          {getPriorityIcon('low')}
-                        </span>
-                        <h4>{email.subject}</h4>
-                      </div>
-                      <span className="email-time">
-                        {formatDate(email.received_at)}
-                      </span>
-                    </div>
-                    <p className="email-from">{email.from_email}</p>
-                    <p className="priority-reason">
-                      <strong>Reason:</strong> {email.reason}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="empty-state">No low priority emails</p>
-            )}
-          </section>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-state">{band.empty}</p>
+              )}
+            </section>
+          ))}
         </>
       ) : null}
     </div>

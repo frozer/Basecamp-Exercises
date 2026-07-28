@@ -11,6 +11,10 @@ key.env
 .venv/
 .ipynb_checkpoints/
 
+# Client dependencies and build output (npm install / npm run build in client/)
+node_modules/
+client/dist/
+
 # Local SQLite storage for the e-mail API (data/emails.db + WAL sidecars)
 data/*.db
 data/*.db-wal

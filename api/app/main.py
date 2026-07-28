@@ -16,7 +16,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from .db import init_db
 from .routers import agenda, emails, summarize
 
-# The Next.js client in ../client runs on :3000 during development.
+# The Vite client in ../client runs on :3000 during development. It normally
+# reaches this app through its own dev proxy, so CORS only matters when the
+# browser is pointed straight here via VITE_API_BASE.
 CORS_ORIGINS = [
     origin.strip()
     for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
