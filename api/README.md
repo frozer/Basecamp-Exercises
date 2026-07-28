@@ -177,9 +177,12 @@ curl -X POST http://localhost:8000/summarize/1 \
   value is stripped, since trailing whitespace in generated text means nothing
   here.
 
-Nothing calls this endpoint automatically yet — no worker polls `GET /summarize`
-and no summariser generates the text (`app/summarizer.py` is still a stub), so
-for now the queue is drained by whatever you point at it.
+`app/summarizer.py` is still a stub, so nothing inside this app generates the
+text. The agent in `../agent/emailProcessing.py` does it from outside: it polls
+`GET /summarize` every 10 seconds, reads the e-mails a job names, asks Claude for
+the summary, submits it here, and then rewrites today's agenda. Run it with
+`python emailProcessing.py` alongside uvicorn. Without it the queue is drained by
+whatever you point at it.
 
 | Column       | Type                          |
 | ------------ | ----------------------------- |
