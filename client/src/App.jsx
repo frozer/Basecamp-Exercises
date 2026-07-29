@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import './App.css';
+import AgendaPanel from './components/AgendaPanel';
 import SummaryPanel from './components/SummaryPanel';
 import PriorityPanel from './components/PriorityPanel';
 import { health } from './api';
 
 const TABS = [
+  { id: 'agenda', label: 'Agenda', icon: '🗓' },
   { id: 'priority', label: 'Inbox', icon: '⚡' },
   { id: 'summary', label: 'Summarize', icon: '📊' },
 ];
 
 function App() {
-  const [activeTab, setActiveTab] = useState('priority');
+  // The agenda is the agent's headline output, so it is what opens.
+  const [activeTab, setActiveTab] = useState('agenda');
   // The API has no accounts, so the only thing to report up here is liveness.
   const [apiStatus, setApiStatus] = useState('checking');
 
@@ -63,6 +66,8 @@ function App() {
             </div>
           )}
 
+          {/* Unmounting stops the Agenda panel's poll — that is deliberate. */}
+          {activeTab === 'agenda' && <AgendaPanel />}
           {activeTab === 'priority' && <PriorityPanel />}
           {activeTab === 'summary' && <SummaryPanel />}
         </main>

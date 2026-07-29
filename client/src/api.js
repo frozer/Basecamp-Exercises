@@ -95,3 +95,9 @@ export const getJob = (jobId) => request(`/summarize/${jobId}`);
 /** Write a job's summary, which takes it out of the pending list. */
 export const submitJobSummary = (jobId, summary) =>
   request(`/summarize/${jobId}`, { method: 'POST', body: { summary } });
+
+/**
+ * Today's plan: `{ top, meeting, support, date }`. The worker in
+ * ../agent/emailProcessing.py writes it, so this 404s until its first cycle.
+ */
+export const getAgenda = () => request('/agenda');
