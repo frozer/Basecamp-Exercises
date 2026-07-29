@@ -32,7 +32,8 @@ API's own `priority` field is a different vocabulary — `low`/`medium`/`critica
 — and is what agenda ranking leans on first; see PRIORITY_RANK / AGENT_PRIORITY_RANK.
 
 Usage:
-    export ANTHROPIC_API_KEY="sk-ant-..."        # or: ant auth login
+    ANTHROPIC_API_KEY=sk-ant-...                 # in the repo-root .env, or the
+                                                 # environment, or: ant auth login
     uvicorn app.main:app --reload --port 8000    # in ../api, first
     python emailProcessing.py                    # poll forever, every 10s
     python emailProcessing.py --once             # one cycle, then exit
@@ -51,15 +52,37 @@ import time
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
+# ── Corporate TLS inspection (Zscaler, Netskope, Palo Alto, …) ────────────
+# On a managed laptop, HTTPS is often intercepted and re-signed by a corporate root
+# CA that lives in the OS trust store. Python doesn't read that store - it verifies
+# against certifi's own bundle - so api.anthropic.com fails with
+# CERTIFICATE_VERIFY_FAILED / APIConnectionError even though the API is perfectly
+# reachable (curl to the same URL succeeds, because curl uses the OS store).
+# truststore points Python at the OS store too. A no-op on unmanaged machines.
+try:
+    import truststore
+    truststore.inject_into_ssl()
+    print("✓ TLS: verifying against the OS certificate store")
+except Exception as _tls_exc:  # Python < 3.10, or the install was blocked
+    print("[!!] truststore unavailable (" + type(_tls_exc).__name__ + ") - falling back "
+          "to certifi. If the API check below fails with a certificate error, see SETUP.md.")
+
 import httpx
 from anthropic import Anthropic, APIError
+from dotenv import load_dotenv
+
+# The repo-root `.env` is where the setup step puts ANTHROPIC_API_KEY. The SDK only
+# reads os.environ, so without this the key in that file is invisible and the first
+# Claude call dies with `TypeError: Could not resolve authentication method`.
+# Searches upward from this file, so it is found whatever the working directory.
+load_dotenv()
 
 LOG = logging.getLogger("emailProcessing")
 
 DEFAULT_API_BASE = os.environ.get("EMAIL_API_BASE", "http://localhost:8000")
 DEFAULT_POLL_INTERVAL = 10.0
 DEFAULT_AGENDA_SIZE = 5
-DEFAULT_MODEL = "claude-opus-5"
+DEFAULT_MODEL = "claude-sonnet-5"
 
 # The API's own priority vocabulary (low / medium / critical) and the agent's
 # (low / medium / high). Lower rank sorts first.
